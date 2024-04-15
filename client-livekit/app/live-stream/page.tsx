@@ -37,7 +37,7 @@ export default function Page() {
         console.log(e);
       }
     })();
-  }, []);
+  }, []); // eslint-disable-line
 
   if (token === "") {
     return <div>Getting token from backend. Please wait...</div>;
