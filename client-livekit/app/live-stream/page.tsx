@@ -1,82 +1,96 @@
 "use client";
 
 import "@livekit/components-styles";
-import {
-  LiveKitRoom,
-  GridLayout,
-  ParticipantTile,
-  RoomAudioRenderer,
-  ControlBar,
-  useTracks,
-  useParticipants,
-  ParticipantLoop,
-  ParticipantName,
-} from "@livekit/components-react";
-import { Track } from "livekit-client";
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function Page() {
-  const [token, setToken] = useState("");
-  const searchParams = useSearchParams();
-  const name = searchParams.get("name");
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const resp = await fetch(`http://localhost:8080/livekit/create-token`, {
+  const getCreatorToken = async () => {
+    setLoading(true);
+    try {
+      const creatorId = "test-creator-id";
+      const resp = await fetch(
+        `http://localhost:4002/internal/livestream/creators/${creatorId}/create-access-token`,
+        {
           method: "POST",
           headers: {
             "content-type": "application/json",
           },
-          body: JSON.stringify({ participantName: name }),
-        });
-        const data = await resp.json();
-        setToken(data.token);
-      } catch (e) {
-        console.log(e);
-      }
-    })();
-  }, []); // eslint-disable-line
+          body: JSON.stringify({
+            creatorName: "test-creator",
+            title: "Creator's Live stream",
+            allowsTips: false,
+            allowsComments: true,
+            minimumCommentTipAmountInCents: 5000,
+          }),
+        }
+      );
+      const data = await resp.json();
+      router.push(`/live-stream/creator?token=${data.accessToken}`);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (token === "") {
-    return <div>Getting token from backend. Please wait...</div>;
-  }
+  const getFanToken = async () => {
+    setLoading(true);
+    try {
+      const fanId = "test-fan-id";
+      const resp = await fetch(
+        `http://localhost:4002/internal/livestream/fans/${fanId}/create-access-token`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            creatorId: "test-creator-id",
+            fanName: "test-fan",
+          }),
+        }
+      );
+      const data = await resp.json();
+      router.push(`/live-stream/fan?token=${data.accessToken}`);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClick = (type: "creator" | "fan") => {
+    if (type === "creator") getCreatorToken();
+    else if (type === "fan") getFanToken();
+  };
 
   return (
-    <LiveKitRoom
-      video={true}
-      audio={true}
-      token={token}
-      serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
-      data-lk-theme="default"
-      style={{ height: "100dvh" }}
-    >
-      <MyVideoConference />
-      <ParticipantList />
-      <RoomAudioRenderer />
-      <ControlBar />
-    </LiveKitRoom>
-  );
-}
+    <div className="flex justify-center items-center text-center border h-screen">
+      <div className="flex flex-col gap-5">
+        {loading ? (
+          <>... LOADING</>
+        ) : (
+          <>
+            <div
+              className="text-red-800 font-bold cursor-pointer"
+              onClick={() => handleClick("creator")}
+            >
+              <h1>CREATOR</h1>
+            </div>
 
-function MyVideoConference() {
-  const tracks = useTracks([Track.Source.Camera]);
-  return (
-    <GridLayout
-      tracks={tracks}
-      style={{ height: "calc(100vh - var(--lk-control-bar-height))" }}
-    >
-      <ParticipantTile />
-    </GridLayout>
-  );
-}
-
-function ParticipantList() {
-  const participants = useParticipants();
-  return (
-    <ParticipantLoop participants={participants}>
-      <ParticipantName />
-    </ParticipantLoop>
+            <div
+              className="text-green-800 font-bold cursor-pointer"
+              onClick={() => handleClick("fan")}
+            >
+              <h1>FAN</h1>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
