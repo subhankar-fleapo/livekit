@@ -9,12 +9,22 @@ import {
   GridLayout,
   ParticipantTile,
 } from "@livekit/components-react";
-import { Track } from "livekit-client";
+import { Room, RoomEvent, Track } from "livekit-client";
 import { useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 export default function Page() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const [room] = useState(new Room());
+
+  const onConnection = () => {
+    room.on(RoomEvent.DataReceived, (data: any) => {
+      const decoder = new TextDecoder();
+      const decodedData = decoder.decode(data);
+      console.log(JSON.parse(decodedData));
+    });
+  };
 
   if (!token) {
     return <div>Getting token from backend. Please wait...</div>;
@@ -22,6 +32,8 @@ export default function Page() {
 
   return (
     <LiveKitRoom
+      room={room}
+      onConnected={onConnection}
       video={true}
       audio={true}
       token={token}
